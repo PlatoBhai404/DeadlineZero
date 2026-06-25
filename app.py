@@ -69,7 +69,8 @@ def onboarding_submit():
     name = request.form.get("name", "").strip()
     persona = request.form.get("persona", "").strip()
 
-    if not name or persona not in ("student", "professional", "parent"):
+    valid_personas = ("student", "professional", "parent", "entrepreneur")
+    if not name or persona not in valid_personas:
         return render_template("onboarding.html", error="Please fill in all fields.")
 
     user_id = db.create_user(name, persona)
@@ -82,11 +83,19 @@ def onboarding_submit():
 @app.route("/dashboard", methods=["GET"])
 @require_user
 def dashboard():
-    """Main dashboard — shows plan, at-risk tasks, and quick add."""
+    """
+    Main dashboard — refreshes pressure scores, then shows daily plan,
+    at-risk tasks, active focus session, and quick add.
+    """
     user = get_current_user()
+
+    # Refresh pressure scores on every dashboard load so they stay current
+    db.update_pressure_scores(user["id"])
+
     tasks = db.get_pending_tasks(user["id"])
     at_risk = db.get_at_risk_tasks(user["id"])
     last_scan = db.get_last_email_scan(user["id"])
+    active_session = db.get_active_focus_session(user["id"])
 
     plan = gemini.generate_daily_plan(
         user["name"],
@@ -100,7 +109,8 @@ def dashboard():
         tasks=tasks,
         at_risk=at_risk,
         plan=plan,
-        last_scan=last_scan
+        last_scan=last_scan,
+        active_session=active_session
     )
 
 
@@ -114,7 +124,7 @@ def refresh_plan():
     return jsonify({"plan": plan})
 
 
-# ── QUICK ADD TASK ────────────────────────────────────────────────────────────
+# ── TASKS ─────────────────────────────────────────────────────────────────────
 
 @app.route("/tasks/quick-add", methods=["POST"])
 @require_user
@@ -152,8 +162,6 @@ def quick_add_task():
 
     return jsonify({"tasks": created})
 
-
-# ── TASKS ─────────────────────────────────────────────────────────────────────
 
 @app.route("/tasks", methods=["GET"])
 @require_user
@@ -215,6 +223,135 @@ def get_intervention():
     return jsonify({"message": message})
 
 
+# ── VOICE INPUT ───────────────────────────────────────────────────────────────
+
+@app.route("/voice/process", methods=["POST"])
+@require_user
+def voice_process():
+    """
+    API endpoint — receives a voice transcript from the frontend
+    (Web Speech API), extracts tasks via Gemini, saves them,
+    and returns the created tasks as JSON.
+    """
+    user = get_current_user()
+    data = request.get_json()
+    transcript = data.get("transcript", "").strip()
+
+    if not transcript:
+        return jsonify({"error": "No transcript provided."}), 400
+
+    extracted = gemini.extract_tasks_from_voice(
+        user["name"], user["persona"], transcript
+    )
+
+    created = []
+    for task in extracted:
+        task_id = db.create_task(
+            user_id=user["id"],
+            title=task.get("title", "Untitled Task"),
+            description=task.get("description", ""),
+            deadline=task.get("deadline"),
+            priority=task.get("priority", "medium"),
+            estimated_hours=task.get("estimated_hours", 1.0),
+            subtasks=task.get("subtasks", []),
+            source="voice",
+            reasoning=task.get("reasoning", "")
+        )
+        task["id"] = task_id
+        created.append(task)
+
+    return jsonify({"tasks": created, "transcript": transcript})
+
+
+# ── FOCUS MODE ────────────────────────────────────────────────────────────────
+
+@app.route("/focus", methods=["GET"])
+@require_user
+def focus():
+    """
+    Focus mode page — shows the AI-recommended task, Pomodoro timer,
+    and active session state.
+    """
+    user = get_current_user()
+    tasks = db.get_pending_tasks(user["id"])
+    active_session = db.get_active_focus_session(user["id"])
+    recommendation = gemini.get_focus_recommendation(
+        user["name"], user["persona"], tasks
+    )
+    recent_sessions = db.get_focus_sessions(user["id"], limit=10)
+
+    return render_template(
+        "focus.html",
+        user=user,
+        tasks=tasks,
+        recommendation=recommendation,
+        active_session=active_session,
+        recent_sessions=recent_sessions
+    )
+
+
+@app.route("/focus/recommend", methods=["GET"])
+@require_user
+def focus_recommend():
+    """API endpoint — returns AI recommendation for what to work on right now."""
+    user = get_current_user()
+    tasks = db.get_pending_tasks(user["id"])
+    recommendation = gemini.get_focus_recommendation(
+        user["name"], user["persona"], tasks
+    )
+    return jsonify(recommendation)
+
+
+@app.route("/focus/start", methods=["POST"])
+@require_user
+def focus_start():
+    """
+    API endpoint — starts a new Pomodoro focus session.
+    Accepts optional task_id to link the session to a specific task.
+    Returns the session ID and started_at timestamp.
+    """
+    user = get_current_user()
+    data = request.get_json()
+    task_id = data.get("task_id")
+
+    # End any existing active session before starting a new one
+    active = db.get_active_focus_session(user["id"])
+    if active:
+        db.end_focus_session(active["id"], user["id"], completed=False)
+
+    session_id = db.start_focus_session(user["id"], task_id)
+    return jsonify({
+        "session_id": session_id,
+        "started_at": datetime.now().isoformat()
+    })
+
+
+@app.route("/focus/end", methods=["POST"])
+@require_user
+def focus_end():
+    """
+    API endpoint — ends a Pomodoro focus session and logs duration.
+    Returns duration in minutes and whether the session was completed.
+    """
+    user = get_current_user()
+    data = request.get_json()
+    session_id = data.get("session_id")
+    completed = data.get("completed", True)
+
+    if not session_id:
+        return jsonify({"error": "No session ID provided."}), 400
+
+    duration_minutes = db.end_focus_session(session_id, user["id"], completed)
+
+    if duration_minutes is None:
+        return jsonify({"error": "Session not found."}), 404
+
+    return jsonify({
+        "duration_minutes": duration_minutes,
+        "completed": completed
+    })
+
+
 # ── CHAT ──────────────────────────────────────────────────────────────────────
 
 @app.route("/chat", methods=["GET"])
@@ -247,7 +384,6 @@ def chat_send():
     )
 
     db.save_chat_message(user["id"], "assistant", response)
-
     return jsonify({"response": response})
 
 
@@ -258,6 +394,35 @@ def chat_clear():
     user = get_current_user()
     db.clear_chat_history(user["id"])
     return jsonify({"success": True})
+
+
+# ── ANALYTICS ─────────────────────────────────────────────────────────────────
+
+@app.route("/analytics", methods=["GET"])
+@require_user
+def analytics():
+    """Analytics page — shows completion rates, focus time, and weekly summary."""
+    user = get_current_user()
+    stats = db.get_analytics(user["id"])
+    all_tasks = db.get_all_tasks(user["id"])
+    weekly_summary = gemini.generate_weekly_summary(
+        user["name"], user["persona"], stats, all_tasks
+    )
+    return render_template(
+        "analytics.html",
+        user=user,
+        stats=stats,
+        weekly_summary=weekly_summary
+    )
+
+
+@app.route("/analytics/data", methods=["GET"])
+@require_user
+def analytics_data():
+    """API endpoint — returns raw analytics JSON for chart rendering."""
+    user = get_current_user()
+    stats = db.get_analytics(user["id"])
+    return jsonify(stats)
 
 
 # ── GMAIL OAUTH ───────────────────────────────────────────────────────────────
@@ -277,10 +442,7 @@ def oauth2callback():
     Handle the OAuth callback from Google.
     Exchange the authorization code for tokens and mark Gmail as connected.
     """
-    tokens = gmail.exchange_code_for_tokens(
-        session,
-        request.url
-    )
+    tokens = gmail.exchange_code_for_tokens(session, request.url)
     user = get_current_user()
     db.set_gmail_connected(user["id"], True)
     return redirect(url_for("dashboard"))
@@ -329,6 +491,52 @@ def gmail_scan():
     return jsonify({
         "tasks_created": tasks_created,
         "emails_processed": len(emails)
+    })
+
+
+@app.route("/gmail/scan-accountability", methods=["POST"])
+@require_user
+def gmail_scan_accountability():
+    """
+    API endpoint — scans recent emails specifically for situations where
+    someone is waiting on the user. Creates high-priority accountability tasks.
+    Returns a summary of what was found.
+    """
+    user = get_current_user()
+    tokens = session.get("gmail_tokens")
+
+    if not tokens:
+        return jsonify({"error": "Gmail not connected."}), 401
+
+    emails = gmail.fetch_recent_emails(tokens, max_results=30)
+
+    if not emails:
+        return jsonify({"tasks_created": 0, "message": "No emails found."})
+
+    email_text = gmail.build_email_text_block(emails)
+    extracted = gemini.extract_accountability_tasks(
+        user["name"], user["persona"], email_text
+    )
+
+    tasks_created = 0
+    for task in extracted:
+        db.create_task(
+            user_id=user["id"],
+            title=task.get("title", "Untitled Task"),
+            description=task.get("description", ""),
+            deadline=task.get("deadline"),
+            priority="high",  # Accountability tasks are always high priority
+            estimated_hours=task.get("estimated_hours", 0.25),
+            subtasks=task.get("subtasks", []),
+            source="accountability",
+            reasoning=task.get("reasoning", "")
+        )
+        tasks_created += 1
+
+    return jsonify({
+        "tasks_created": tasks_created,
+        "emails_processed": len(emails),
+        "message": f"Found {tasks_created} people waiting on you."
     })
 
 

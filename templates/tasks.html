@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeadlineZero — Tasks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #F7F7F5;
+      --surface:   #FFFFFF;
+      --border:    #E4E4E0;
+      --text:      #111110;
+      --muted:     #6B6B68;
+      --amber:     #D97706;
+      --amber-bg:  #FEF3C7;
+      --green:     #16A34A;
+      --green-bg:  #DCFCE7;
+      --red:       #DC2626;
+      --red-bg:    #FEE2E2;
+      --mono:      'DM Mono', monospace;
+      --sans:      'Inter', sans-serif;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.5; }
+
+    .shell { display: grid; grid-template-columns: 220px 1fr; height: 100vh; }
+
+    /* SIDEBAR */
+    .sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 28px 20px; gap: 32px; overflow-y: auto; }
+    .wordmark { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.08em; color: var(--text); text-transform: uppercase; }
+    .wordmark span { color: var(--amber); }
+    .user-block { display: flex; flex-direction: column; gap: 4px; }
+    .user-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+    .user-name { font-size: 15px; font-weight: 600; }
+    .user-persona { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    nav { display: flex; flex-direction: column; gap: 2px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; text-decoration: none; color: var(--muted); font-size: 13px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .nav-item:hover { background: var(--bg); color: var(--text); }
+    .nav-item.active { background: var(--bg); color: var(--text); }
+    .nav-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+    .gmail-status { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+    .gmail-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+    .gmail-dot.connected { background: var(--green); }
+
+    /* MAIN */
+    .main { display: flex; flex-direction: column; overflow-y: auto; }
+
+    /* TOPBAR */
+    .topbar { position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .topbar-title { font-size: 13px; font-weight: 600; }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; font-family: var(--sans); cursor: pointer; border: none; transition: opacity 0.15s; text-decoration: none; }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--text); color: #fff; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid transparent; }
+
+    /* CONTENT */
+    .content { padding: 28px 32px; display: flex; flex-direction: column; gap: 24px; }
+
+    /* FILTER BAR */
+    .filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .filter-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 12px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .filter-btn:hover { border-color: var(--text); color: var(--text); }
+    .filter-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+    .filter-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+    .sort-select { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; outline: none; text-transform: uppercase; }
+
+    /* SOURCE TABS */
+    .source-tabs { display: flex; gap: 6px; }
+    .source-tab { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .source-tab.active { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+
+    /* TASK TABLE */
+    .task-table { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+    .task-table-head { display: grid; grid-template-columns: 1fr 90px 90px 110px 120px 100px; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg); }
+    .th { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+    .task-row { display: grid; grid-template-columns: 1fr 90px 90px 110px 120px 100px; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.1s; }
+    .task-row:last-child { border-bottom: none; }
+    .task-row:hover { background: var(--bg); }
+    .task-row.done { opacity: 0.45; }
+
+    .task-row-title { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .task-row-title.done-text { text-decoration: line-through; }
+
+    .priority-pill { display: inline-flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; }
+    .priority-high     { background: var(--red-bg);    color: var(--red); }
+    .priority-medium   { background: var(--amber-bg);  color: var(--amber); }
+    .priority-low      { background: var(--green-bg);  color: var(--green); }
+
+    .source-pill { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; background: var(--bg); color: var(--muted); }
+
+    .deadline-cell { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+    .deadline-cell.overdue { color: var(--red); }
+    .deadline-cell.soon    { color: var(--amber); }
+
+    /* PRESSURE MINI */
+    .pressure-mini { display: flex; align-items: center; gap: 6px; }
+    .pressure-mini-bar { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .pressure-mini-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; width: 0%; }
+    .pressure-mini-num { font-family: var(--mono); font-size: 11px; color: var(--muted); min-width: 24px; text-align: right; }
+
+    /* ROW ACTIONS */
+    .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+    .row-btn { font-family: var(--mono); font-size: 10px; padding: 3px 7px; border-radius: 3px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
+    .row-btn:hover { border-color: var(--text); color: var(--text); }
+    .row-btn.del:hover { border-color: var(--red); color: var(--red); }
+    .row-btn.done-btn:hover { border-color: var(--green); color: var(--green); }
+
+    /* EMPTY */
+    .empty-state { padding: 56px 24px; text-align: center; color: var(--muted); font-size: 13px; }
+    .empty-state strong { display: block; font-size: 15px; color: var(--text); margin-bottom: 6px; }
+
+    /* SUMMARY STRIP */
+    .summary-strip { display: flex; gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .summary-item { display: flex; flex-direction: column; gap: 2px; }
+    .summary-num { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--text); line-height: 1; }
+    .summary-num.amber { color: var(--amber); }
+    .summary-num.green { color: var(--green); }
+    .summary-num.red   { color: var(--red); }
+    .summary-lbl { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+    /* ADD INLINE FORM */
+    .inline-add { display: flex; gap: 10px; align-items: center; padding: 14px 16px; background: var(--amber-bg); border-top: 1px solid var(--border); }
+    .inline-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-family: var(--sans); font-size: 13px; background: var(--surface); color: var(--text); outline: none; }
+    .inline-input:focus { border-color: var(--amber); }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(17,17,16,0.5); z-index: 100; display: none; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; max-width: 480px; width: 90%; display: flex; flex-direction: column; gap: 16px; }
+    .modal-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber); }
+    .modal-body { font-size: 14px; color: var(--text); line-height: 1.7; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* TOAST */
+    .toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: var(--text); color: #fff; font-size: 13px; font-family: var(--mono); padding: 10px 16px; border-radius: 6px; opacity: 0; transform: translateY(8px); transition: opacity 0.2s, transform 0.2s; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .spinner { width: 13px; height: 13px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .task-table-head { grid-template-columns: 1fr 80px 80px 90px; }
+      .task-row { grid-template-columns: 1fr 80px 80px 90px; }
+      .th:nth-child(3), .th:nth-child(6) { display: none; }
+      .task-row > *:nth-child(3), .task-row > *:nth-child(6) { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .pressure-mini-fill, .toast { transition: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="wordmark">Deadline<span>Zero</span></div>
+    <div class="user-block">
+      <span class="user-label">Operator</span>
+      <span class="user-name" id="userName">—</span>
+      <span class="user-persona" id="userPersona">—</span>
+    </div>
+    <nav>
+      <a href="/dashboard" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Dashboard
+      </a>
+      <a href="/tasks" class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+        Tasks
+      </a>
+      <a href="/focus" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/></svg>
+        Focus
+      </a>
+      <a href="/chat" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12v9H9l-3 3v-3H2V2z"/></svg>
+        Chat
+      </a>
+      <a href="/analytics" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12l3-4 3 2 3-5 3 3"/></svg>
+        Analytics
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="gmail-status">
+        <div class="gmail-dot" id="gmailDot"></div>
+        <span id="gmailLabel">Gmail not connected</span>
+      </div>
+      <a href="/gmail/connect" class="btn btn-ghost" style="font-size:12px;justify-content:center;" id="gmailConnectBtn">Connect Gmail</a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">All Tasks</span>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="scanAccountability()" id="acctBtn">Scan Accountability</button>
+        <button class="btn btn-primary" onclick="showAddForm()">+ New Task</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- SUMMARY STRIP -->
+      <div class="summary-strip">
+        <div class="summary-item">
+          <span class="summary-num" id="sumTotal">0</span>
+          <span class="summary-lbl">Total</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-num amber" id="sumPending">0</span>
+          <span class="summary-lbl">Pending</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-num red" id="sumAtRisk">0</span>
+          <span class="summary-lbl">At Risk</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-num green" id="sumDone">0</span>
+          <span class="summary-lbl">Done</span>
+        </div>
+      </div>
+
+      <!-- FILTERS -->
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">All</button>
+          <button class="filter-btn" data-filter="pending" onclick="setFilter('pending', this)">Pending</button>
+          <button class="filter-btn" data-filter="at_risk" onclick="setFilter('at_risk', this)">At Risk</button>
+          <button class="filter-btn" data-filter="completed" onclick="setFilter('completed', this)">Done</button>
+          <div class="filter-sep"></div>
+          <div class="source-tabs">
+            <button class="source-tab active" data-source="all" onclick="setSource('all', this)">All Sources</button>
+            <button class="source-tab" data-source="manual" onclick="setSource('manual', this)">Manual</button>
+            <button class="source-tab" data-source="gmail" onclick="setSource('gmail', this)">Gmail</button>
+            <button class="source-tab" data-source="voice" onclick="setSource('voice', this)">Voice</button>
+            <button class="source-tab" data-source="accountability" onclick="setSource('accountability', this)">Accountability</button>
+          </div>
+        </div>
+        <select class="sort-select" onchange="setSort(this.value)">
+          <option value="pressure">Sort: Pressure</option>
+          <option value="deadline">Sort: Deadline</option>
+          <option value="priority">Sort: Priority</option>
+          <option value="created">Sort: Newest</option>
+        </select>
+      </div>
+
+      <!-- TASK TABLE -->
+      <div class="task-table">
+        <div class="task-table-head">
+          <span class="th">Task</span>
+          <span class="th">Priority</span>
+          <span class="th">Source</span>
+          <span class="th">Deadline</span>
+          <span class="th">Pressure</span>
+          <span class="th"></span>
+        </div>
+        <div id="taskTableBody">
+          <div class="empty-state">
+            <strong>No tasks yet</strong>
+            Add one above or connect Gmail to pull tasks automatically.
+          </div>
+        </div>
+
+        <!-- INLINE ADD FORM (hidden by default) -->
+        <div class="inline-add" id="addForm" style="display:none;">
+          <input class="inline-input" id="addInput" placeholder="Describe the task — AI will extract deadline and priority…" />
+          <button class="btn btn-primary" onclick="submitAdd()">Add</button>
+          <button class="btn btn-ghost" onclick="hideAddForm()">Cancel</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- INTERVENTION MODAL -->
+<div class="modal-overlay" id="interventionModal">
+  <div class="modal">
+    <span class="modal-title">⚠ Intervention</span>
+    <div class="modal-body" id="interventionText">Loading…</div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Dismiss</button>
+      <a href="/focus" class="btn btn-primary">Start Focus</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+  let allTasks = [];
+  let activeFilter = 'all';
+  let activeSource = 'all';
+  let activeSort   = 'pressure';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadTasks();
+    loadUser();
+  });
+
+  // ── LOAD ──
+  async function loadTasks() {
+    try {
+      const res  = await fetch('/tasks/list');
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      allTasks = data.tasks || [];
+      renderSummary();
+      renderTable();
+    } catch {
+      toast('Failed to load tasks');
+    }
+  }
+
+  async function loadUser() {
+    try {
+      const res  = await fetch('/analytics/data');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.user) {
+        document.getElementById('userName').textContent    = data.user.name || '—';
+        document.getElementById('userPersona').textContent = data.user.persona || '—';
+      }
+      if (data.gmail_connected) {
+        document.getElementById('gmailDot').classList.add('connected');
+        document.getElementById('gmailLabel').textContent = 'Gmail connected';
+        document.getElementById('gmailConnectBtn').style.display = 'none';
+      }
+    } catch {}
+  }
+
+  // ── SUMMARY ──
+  function renderSummary() {
+    const total   = allTasks.length;
+    const pending = allTasks.filter(t => t.status === 'pending').length;
+    const atRisk  = allTasks.filter(t => (t.pressure_score || 0) >= 50 && t.status !== 'completed').length;
+    const done    = allTasks.filter(t => t.status === 'completed').length;
+    document.getElementById('sumTotal').textContent   = total;
+    document.getElementById('sumPending').textContent = pending;
+    document.getElementById('sumAtRisk').textContent  = atRisk;
+    document.getElementById('sumDone').textContent    = done;
+  }
+
+  // ── FILTER / SORT ──
+  function setFilter(f, el) {
+    activeFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    renderTable();
+  }
+
+  function setSource(s, el) {
+    activeSource = s;
+    document.querySelectorAll('.source-tab').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    renderTable();
+  }
+
+  function setSort(s) {
+    activeSort = s;
+    renderTable();
+  }
+
+  function getFiltered() {
+    let list = [...allTasks];
+
+    if (activeFilter === 'pending')   list = list.filter(t => t.status === 'pending');
+    if (activeFilter === 'completed') list = list.filter(t => t.status === 'completed');
+    if (activeFilter === 'at_risk')   list = list.filter(t => (t.pressure_score || 0) >= 50 && t.status !== 'completed');
+
+    if (activeSource !== 'all') list = list.filter(t => t.source === activeSource);
+
+    if (activeSort === 'pressure') list.sort((a, b) => (b.pressure_score || 0) - (a.pressure_score || 0));
+    if (activeSort === 'deadline') list.sort((a, b) => {
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    });
+    if (activeSort === 'priority') {
+      const order = { high: 0, medium: 1, low: 2 };
+      list.sort((a, b) => (order[a.priority] ?? 2) - (order[b.priority] ?? 2));
+    }
+    if (activeSort === 'created') list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    return list;
+  }
+
+  // ── RENDER TABLE ──
+  function renderTable() {
+    const body = document.getElementById('taskTableBody');
+    const list = getFiltered();
+
+    if (!list.length) {
+      body.innerHTML = `<div class="empty-state"><strong>No tasks here</strong>Try a different filter or add a new task.</div>`;
+      return;
+    }
+
+    body.innerHTML = list.map(task => {
+      const score     = task.pressure_score || 0;
+      const pct       = Math.min(score, 100);
+      const fillColor = score >= 80 ? 'var(--red)' : score >= 50 ? 'var(--amber)' : 'var(--green)';
+      const isDone    = task.status === 'completed';
+
+      const deadlineText = task.deadline
+        ? new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+        : '—';
+
+      const now = new Date();
+      const dl  = task.deadline ? new Date(task.deadline) : null;
+      const daysLeft = dl ? Math.ceil((dl - now) / 86400000) : null;
+      const dlClass  = daysLeft !== null && daysLeft < 0 ? 'overdue' : daysLeft !== null && daysLeft <= 2 ? 'soon' : '';
+
+      const priorityClass = task.priority === 'high' ? 'priority-high' : task.priority === 'low' ? 'priority-low' : 'priority-medium';
+
+      return `
+        <div class="task-row ${isDone ? 'done' : ''}" data-id="${task.id}">
+          <span class="task-row-title ${isDone ? 'done-text' : ''}" title="${escHtml(task.title)}">${escHtml(task.title)}</span>
+          <span><span class="priority-pill ${priorityClass}">${task.priority || 'med'}</span></span>
+          <span><span class="source-pill">${task.source || 'manual'}</span></span>
+          <span class="deadline-cell ${dlClass}">${deadlineText}</span>
+          <div class="pressure-mini">
+            <div class="pressure-mini-bar">
+              <div class="pressure-mini-fill" data-pct="${pct}" style="background:${fillColor}"></div>
+            </div>
+            <span class="pressure-mini-num">${score}</span>
+          </div>
+          <div class="row-actions">
+            ${!isDone ? `<button class="row-btn done-btn" onclick="markDone(${task.id})">Done</button>` : ''}
+            ${!isDone ? `<button class="row-btn" onclick="intervene(${task.id})">AI</button>` : ''}
+            <button class="row-btn del" onclick="deleteTask(${task.id})">Del</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.pressure-mini-fill').forEach(el => {
+        el.style.width = el.dataset.pct + '%';
+      });
+    });
+  }
+
+  // ── ACTIONS ──
+  async function markDone(taskId) {
+    try {
+      const res = await fetch('/tasks/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId, status: 'completed' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const t = allTasks.find(t => t.id === taskId);
+        if (t) t.status = 'completed';
+        renderSummary();
+        renderTable();
+        toast('Task marked complete');
+      }
+    } catch { toast('Failed to update'); }
+  }
+
+  async function deleteTask(taskId) {
+    if (!confirm('Delete this task?')) return;
+    try {
+      const res = await fetch('/tasks/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        allTasks = allTasks.filter(t => t.id !== taskId);
+        renderSummary();
+        renderTable();
+        toast('Task deleted');
+      }
+    } catch { toast('Failed to delete'); }
+  }
+
+  async function intervene(taskId) {
+    document.getElementById('interventionModal').classList.add('open');
+    document.getElementById('interventionText').textContent = 'AI is thinking…';
+    try {
+      const res = await fetch('/tasks/intervention', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId })
+      });
+      const data = await res.json();
+      document.getElementById('interventionText').textContent = data.message || 'No intervention available.';
+    } catch {
+      document.getElementById('interventionText').textContent = 'Could not load intervention.';
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('interventionModal').classList.remove('open');
+  }
+
+  // ── ADD FORM ──
+  function showAddForm() {
+    document.getElementById('addForm').style.display = 'flex';
+    document.getElementById('addInput').focus();
+  }
+
+  function hideAddForm() {
+    document.getElementById('addForm').style.display = 'none';
+    document.getElementById('addInput').value = '';
+  }
+
+  async function submitAdd() {
+    const input = document.getElementById('addInput');
+    const text  = input.value.trim();
+    if (!text) return;
+    try {
+      const res = await fetch('/tasks/quick-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      if (data.tasks_created) {
+        toast(`${data.tasks_created} task${data.tasks_created > 1 ? 's' : ''} added`);
+        hideAddForm();
+        await loadTasks();
+      } else {
+        toast('No tasks extracted — try being more specific');
+      }
+    } catch { toast('Failed to add task'); }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.activeElement.id === 'addInput') submitAdd();
+    if (e.key === 'Escape') { hideAddForm(); closeModal(); }
+  });
+
+  // ── ACCOUNTABILITY SCAN ──
+  async function scanAccountability() {
+    const btn = document.getElementById('acctBtn');
+    btn.innerHTML = '<span class="spinner"></span> Scanning';
+    btn.disabled  = true;
+    try {
+      const res  = await fetch('/gmail/scan-accountability', { method: 'POST' });
+      const data = await res.json();
+      if (data.tasks_created !== undefined) {
+        toast(`Accountability scan: ${data.tasks_created} task${data.tasks_created !== 1 ? 's' : ''} found`);
+        await loadTasks();
+      } else {
+        toast(data.error || 'Scan failed');
+      }
+    } catch { toast('Scan failed'); }
+    finally {
+      btn.textContent = 'Scan Accountability';
+      btn.disabled    = false;
+    }
+  }
+
+  // ── TOAST ──
+  function toast(msg, duration = 3000) {
+    const wrap = document.getElementById('toastWrap');
+    const el   = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    wrap.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 200);
+    }, duration);
+  }
+
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+</script>
+</body>
+</html>

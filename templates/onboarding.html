@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DeadlineZero — Get Started</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #F7F7F5;
+      --surface:   #FFFFFF;
+      --border:    #E4E4E0;
+      --text:      #111110;
+      --muted:     #6B6B68;
+      --amber:     #D97706;
+      --amber-bg:  #FEF3C7;
+      --green:     #16A34A;
+      --green-bg:  #DCFCE7;
+      --red:       #DC2626;
+      --red-bg:    #FEE2E2;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* ─── Layout ──────────────────────────────────── */
+    .onboarding-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      max-width: 900px;
+      width: 100%;
+      min-height: 560px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    /* ─── Left Panel ──────────────────────────────── */
+    .left-panel {
+      background: var(--text);
+      color: #F7F7F5;
+      padding: 48px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .wordmark {
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      color: #F7F7F5;
+    }
+
+    .wordmark span {
+      color: var(--amber);
+    }
+
+    .left-headline {
+      font-size: 28px;
+      font-weight: 600;
+      line-height: 1.25;
+      color: #F7F7F5;
+      margin-top: 40px;
+    }
+
+    .left-sub {
+      font-size: 14px;
+      color: #9B9B98;
+      line-height: 1.6;
+      margin-top: 12px;
+    }
+
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 32px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 13px;
+      color: #C4C4C0;
+      line-height: 1.4;
+    }
+
+    .feature-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--amber);
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    .pressure-demo {
+      margin-top: 32px;
+      padding: 16px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+
+    .pressure-demo-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: #9B9B98;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    .demo-task {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .demo-task:last-child { margin-bottom: 0; }
+
+    .demo-task-name {
+      font-size: 12px;
+      color: #C4C4C0;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .demo-bar-track {
+      width: 80px;
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .demo-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 1.2s cubic-bezier(.4,0,.2,1);
+    }
+
+    .demo-score {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      min-width: 24px;
+      text-align: right;
+    }
+
+    /* ─── Right Panel (Form) ──────────────────────── */
+    .right-panel {
+      padding: 48px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .form-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .form-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    /* Step indicators */
+    .steps-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 28px;
+    }
+
+    .step-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+
+    .step-dot.active { background: var(--amber); width: 18px; border-radius: 3px; }
+    .step-dot.done   { background: var(--green); }
+
+    /* Form fields */
+    .field-group {
+      margin-bottom: 20px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 6px;
+      letter-spacing: 0.01em;
+    }
+
+    .field-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .field-input:focus { border-color: var(--amber); }
+    .field-input::placeholder { color: var(--muted); }
+
+    /* Persona cards */
+    .persona-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .persona-card {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: var(--bg);
+    }
+
+    .persona-card:hover {
+      border-color: var(--amber);
+      background: var(--amber-bg);
+    }
+
+    .persona-card.selected {
+      border-color: var(--amber);
+      background: var(--amber-bg);
+    }
+
+    .persona-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .persona-desc {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* Error */
+    .form-error {
+      font-size: 12px;
+      color: var(--red);
+      margin-bottom: 14px;
+      min-height: 16px;
+    }
+
+    /* Button */
+    .btn-submit {
+      width: 100%;
+      padding: 12px;
+      background: var(--text);
+      color: #F7F7F5;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .btn-submit:hover:not(:disabled) { opacity: 0.85; }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Responsive ──────────────────────────────── */
+    @media (max-width: 680px) {
+      .onboarding-wrap { grid-template-columns: 1fr; min-height: auto; }
+      .left-panel { padding: 32px 24px; }
+      .right-panel { padding: 32px 24px; }
+      .pressure-demo { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="onboarding-wrap">
+
+  <!-- LEFT: brand + feature preview -->
+  <div class="left-panel">
+    <div class="wordmark">Deadline<span>Zero</span></div>
+
+    <div>
+      <div class="left-headline">Stop managing tasks.<br>Start finishing them.</div>
+      <div class="left-sub">DeadlineZero watches your workload and intervenes before things slip — not after.</div>
+
+      <ul class="feature-list">
+        <li class="feature-item">
+          <div class="feature-dot"></div>
+          <span>Adds tasks automatically from Gmail, voice, or plain text</span>
+        </li>
+        <li class="feature-item">
+          <div class="feature-dot"></div>
+          <span>Scores every task by real deadline pressure, not just due dates</span>
+        </li>
+        <li class="feature-item">
+          <div class="feature-dot"></div>
+          <span>Intervenes when a task is at risk — without waiting to be asked</span>
+        </li>
+        <li class="feature-item">
+          <div class="feature-dot"></div>
+          <span>Recommends what to focus on next, not just what's overdue</span>
+        </li>
+      </ul>
+
+      <!-- Animated pressure demo -->
+      <div class="pressure-demo">
+        <div class="pressure-demo-label">PRESSURE SCORES — LIVE DEMO</div>
+        <div class="demo-task">
+          <span class="demo-task-name">Investor deck</span>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill" id="demo-bar-1" style="width:0%;background:var(--red);"></div>
+          </div>
+          <span class="demo-score" id="demo-score-1" style="color:var(--red);font-family:'DM Mono',monospace;">—</span>
+        </div>
+        <div class="demo-task">
+          <span class="demo-task-name">Q3 report review</span>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill" id="demo-bar-2" style="width:0%;background:var(--amber);"></div>
+          </div>
+          <span class="demo-score" id="demo-score-2" style="color:var(--amber);font-family:'DM Mono',monospace;">—</span>
+        </div>
+        <div class="demo-task">
+          <span class="demo-task-name">Team check-in notes</span>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill" id="demo-bar-3" style="width:0%;background:var(--green);"></div>
+          </div>
+          <span class="demo-score" id="demo-score-3" style="color:var(--green);font-family:'DM Mono',monospace;">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: form -->
+  <div class="right-panel">
+    <div class="form-title">Let's get you set up</div>
+    <div class="form-sub">Two quick things and you're in.</div>
+
+    <div class="steps-row">
+      <div class="step-dot active" id="step-1"></div>
+      <div class="step-dot" id="step-2"></div>
+    </div>
+
+    <form id="onboarding-form" onsubmit="handleSubmit(event)" novalidate>
+
+      <!-- Step 1: Name -->
+      <div id="step-1-fields">
+        <div class="field-group">
+          <label class="field-label" for="name-input">Your name</label>
+          <input class="field-input" id="name-input" type="text"
+                 placeholder="e.g. Aanya" autocomplete="given-name" required/>
+        </div>
+      </div>
+
+      <!-- Step 2: Persona -->
+      <div id="step-2-fields" style="display:none;">
+        <div class="field-group">
+          <label class="field-label">What best describes your work?</label>
+          <div class="persona-grid">
+            <div class="persona-card" data-value="entrepreneur" onclick="selectPersona(this)">
+              <div class="persona-name">Entrepreneur</div>
+              <div class="persona-desc">Founder, freelancer, or solo operator</div>
+            </div>
+            <div class="persona-card" data-value="professional" onclick="selectPersona(this)">
+              <div class="persona-name">Professional</div>
+              <div class="persona-desc">Corporate, analyst, or specialist role</div>
+            </div>
+            <div class="persona-card" data-value="student" onclick="selectPersona(this)">
+              <div class="persona-name">Student</div>
+              <div class="persona-desc">Coursework, research, or campus life</div>
+            </div>
+            <div class="persona-card" data-value="creative" onclick="selectPersona(this)">
+              <div class="persona-name">Creative</div>
+              <div class="persona-desc">Designer, writer, or maker</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-error" id="form-error"></div>
+
+      <button class="btn-submit" id="submit-btn" type="submit">
+        <span id="btn-label">Continue</span>
+      </button>
+
+    </form>
+  </div>
+</div>
+
+<script>
+  let currentStep = 1;
+  let selectedPersonaValue = '';
+
+  // ── Animated pressure demo ───────────────────────
+  setTimeout(() => {
+    animateDemo('demo-bar-1', 'demo-score-1', 87);
+    setTimeout(() => animateDemo('demo-bar-2', 'demo-score-2', 53), 200);
+    setTimeout(() => animateDemo('demo-bar-3', 'demo-score-3', 21), 400);
+  }, 400);
+
+  function animateDemo(barId, scoreId, target) {
+    document.getElementById(barId).style.width = target + '%';
+    let cur = 0;
+    const step = Math.ceil(target / 30);
+    const iv = setInterval(() => {
+      cur = Math.min(cur + step, target);
+      document.getElementById(scoreId).textContent = cur;
+      if (cur >= target) clearInterval(iv);
+    }, 30);
+  }
+
+  // ── Persona selection ─────────────────────────────
+  function selectPersona(el) {
+    document.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedPersonaValue = el.dataset.value;
+    clearError();
+  }
+
+  // ── Step navigation ───────────────────────────────
+  function goToStep2() {
+    document.getElementById('step-1-fields').style.display = 'none';
+    document.getElementById('step-2-fields').style.display = 'block';
+    document.getElementById('step-1').classList.remove('active');
+    document.getElementById('step-1').classList.add('done');
+    document.getElementById('step-2').classList.add('active');
+    document.getElementById('btn-label').textContent = 'Get started';
+    currentStep = 2;
+  }
+
+  // ── Submit ────────────────────────────────────────
+  async function handleSubmit(e) {
+    e.preventDefault();
+    clearError();
+
+    if (currentStep === 1) {
+      const name = document.getElementById('name-input').value.trim();
+      if (!name) { showError('Enter your name to continue.'); return; }
+      goToStep2();
+      return;
+    }
+
+    // Step 2
+    if (!selectedPersonaValue) {
+      showError('Pick a persona so the AI can tailor its advice.');
+      return;
+    }
+
+    const name = document.getElementById('name-input').value.trim();
+    const btn  = document.getElementById('submit-btn');
+
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div><span>Setting up…</span>';
+
+    try {
+      const res = await fetch('/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, persona: selectedPersonaValue }),
+      });
+
+      if (res.redirected) {
+        window.location.href = res.url;
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        window.location.href = data.redirect || '/dashboard';
+      } else {
+        showError(data.error || 'Something went wrong. Try again.');
+        btn.disabled = false;
+        btn.innerHTML = '<span id="btn-label">Get started</span>';
+      }
+    } catch (err) {
+      showError('Could not connect to the server. Try again.');
+      btn.disabled = false;
+      btn.innerHTML = '<span id="btn-label">Get started</span>';
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('form-error').textContent = msg;
+  }
+
+  function clearError() {
+    document.getElementById('form-error').textContent = '';
+  }
+</script>
+
+</body>
+</html>

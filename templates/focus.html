@@ -1,0 +1,1112 @@
+{% extends "base.html" %}
+
+{% block title %}Focus — DeadlineZero{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <span class="topbar-title">Focus Mode</span>
+  <div class="topbar-actions">
+    <span id="session-status-badge" class="badge badge-idle">No active session</span>
+  </div>
+</div>
+
+<div class="focus-layout">
+
+  <!-- LEFT COLUMN: AI Recommendation + Task Selector -->
+  <div class="focus-left">
+
+    <div class="card" id="recommendation-card">
+      <div class="card-header">
+        <span class="card-label">AI RECOMMENDATION</span>
+        <button class="btn btn-ghost btn-sm" id="refresh-rec-btn" onclick="loadRecommendation()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <div id="rec-loading" class="rec-loading" style="display:none;">
+        <div class="spinner"></div>
+        <span>Analyzing your workload…</span>
+      </div>
+
+      <div id="rec-content" style="display:none;">
+        <div class="rec-task-name" id="rec-task-name">—</div>
+        <div class="rec-reasoning" id="rec-reasoning">—</div>
+        <div class="rec-meta">
+          <span class="meta-pill" id="rec-duration">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            — min suggested
+          </span>
+        </div>
+        <button class="btn btn-primary btn-full" id="rec-start-btn" onclick="startRecommendedSession()">
+          Start This Task
+        </button>
+      </div>
+
+      <div id="rec-empty" class="rec-empty">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <p>No pending tasks found.<br>Add tasks first to get a recommendation.</p>
+      </div>
+    </div>
+
+    <!-- Manual Task Selector -->
+    <div class="card" id="task-selector-card">
+      <div class="card-header">
+        <span class="card-label">OR PICK MANUALLY</span>
+      </div>
+      <div id="task-list-loading" class="rec-loading" style="display:none;">
+        <div class="spinner"></div>
+      </div>
+      <div id="task-selector-list">
+        <!-- Populated by JS -->
+      </div>
+      <div id="task-selector-empty" class="rec-empty" style="display:none;">
+        <p>No pending tasks available.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN: Timer + Active Session -->
+  <div class="focus-right">
+
+    <!-- Timer Card -->
+    <div class="card timer-card" id="timer-card">
+      <div class="timer-phase" id="timer-phase">FOCUS</div>
+
+      <div class="timer-ring-wrap">
+        <svg class="timer-ring" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <circle class="ring-bg" cx="100" cy="100" r="88"/>
+          <circle class="ring-fill" id="ring-fill" cx="100" cy="100" r="88"
+            stroke-dasharray="553"
+            stroke-dashoffset="0"
+            transform="rotate(-90 100 100)"/>
+        </svg>
+        <div class="timer-display">
+          <div class="timer-time" id="timer-time">25:00</div>
+          <div class="timer-label" id="timer-label">Select a task to begin</div>
+        </div>
+      </div>
+
+      <div class="timer-controls">
+        <button class="btn btn-ghost timer-btn" id="reset-btn" onclick="resetTimer()" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          Reset
+        </button>
+        <button class="btn btn-primary timer-btn" id="start-stop-btn" onclick="toggleTimer()" disabled>
+          <svg width="16" height="16" id="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <svg width="16" height="16" id="pause-icon" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          <span id="start-stop-label">Start</span>
+        </button>
+        <button class="btn btn-ghost timer-btn" id="end-btn" onclick="endSession()" disabled style="color:var(--red);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Done
+        </button>
+      </div>
+
+      <div class="pomodoro-settings">
+        <label class="setting-label">Focus</label>
+        <input class="setting-input" id="focus-minutes" type="number" value="25" min="1" max="90" onchange="updateTimerSettings()">
+        <label class="setting-label">min &nbsp;·&nbsp; Break</label>
+        <input class="setting-input" id="break-minutes" type="number" value="5" min="1" max="30" onchange="updateTimerSettings()">
+        <label class="setting-label">min</label>
+      </div>
+    </div>
+
+    <!-- Active Task Info -->
+    <div class="card active-task-card" id="active-task-card" style="display:none;">
+      <div class="card-header">
+        <span class="card-label">ACTIVE TASK</span>
+        <span class="badge badge-active">In progress</span>
+      </div>
+      <div class="active-task-name" id="active-task-name">—</div>
+
+      <!-- Pressure gauge (signature element) -->
+      <div class="pressure-row">
+        <span class="pressure-label">Pressure</span>
+        <div class="gauge-bar-wrap">
+          <div class="gauge-bar">
+            <div class="gauge-fill" id="active-gauge-fill" style="width:0%"></div>
+          </div>
+        </div>
+        <span class="gauge-score" id="active-gauge-score" style="font-family:'DM Mono',monospace;">—</span>
+      </div>
+
+      <div class="active-task-meta">
+        <span class="meta-pill" id="active-deadline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          —
+        </span>
+        <span class="meta-pill" id="active-priority">—</span>
+        <span class="meta-pill" id="active-session-time">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Session started —
+        </span>
+      </div>
+    </div>
+
+    <!-- Session Log -->
+    <div class="card session-log-card">
+      <div class="card-header">
+        <span class="card-label">TODAY'S SESSIONS</span>
+        <span class="badge" id="sessions-count-badge">0 sessions</span>
+      </div>
+      <div id="session-log-list">
+        <div class="log-empty">No focus sessions yet today. Start one above.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Done Modal -->
+<div class="modal-overlay" id="done-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Session Complete</span>
+    </div>
+    <div class="modal-body">
+      <div class="done-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="8 12 11 15 16 9"/></svg>
+      </div>
+      <p class="done-msg" id="done-msg">Good work. Mark this task as completed?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDoneModal(false)">Keep it open</button>
+      <button class="btn btn-primary" onclick="closeDoneModal(true)">Mark complete</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* ─── Focus Layout ─────────────────────────────────────── */
+.focus-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  padding: 24px;
+  align-items: start;
+}
+
+.focus-left, .focus-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ─── Cards ────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+/* ─── Recommendation ───────────────────────────────────── */
+.rec-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 12px 0;
+}
+
+.rec-task-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.rec-reasoning {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.rec-meta {
+  margin-bottom: 16px;
+}
+
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.rec-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ─── Task Selector List ───────────────────────────────── */
+.task-select-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.12s, border-color 0.12s;
+  margin-bottom: 6px;
+}
+
+.task-select-item:hover {
+  background: var(--bg);
+  border-color: var(--border);
+}
+
+.task-select-item.selected {
+  background: var(--amber-bg);
+  border-color: var(--amber);
+}
+
+.task-select-item:last-child {
+  margin-bottom: 0;
+}
+
+.task-select-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-select-score {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.task-select-score.high { color: var(--red); }
+.task-select-score.med  { color: var(--amber); }
+.task-select-score.low  { color: var(--green); }
+
+/* ─── Timer Card ───────────────────────────────────────── */
+.timer-card {
+  text-align: center;
+}
+
+.timer-phase {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+.timer-ring-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 20px;
+}
+
+.timer-ring {
+  width: 200px;
+  height: 200px;
+}
+
+.ring-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 6;
+}
+
+.ring-fill {
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke 0.4s;
+}
+
+.timer-display {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.timer-time {
+  font-family: 'DM Mono', monospace;
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.timer-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  max-width: 120px;
+  text-align: center;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.timer-btn {
+  min-width: 80px;
+}
+
+.pomodoro-settings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.setting-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.setting-input {
+  width: 44px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+}
+
+.setting-input:focus {
+  border-color: var(--amber);
+}
+
+/* ─── Active Task Card ─────────────────────────────────── */
+.active-task-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 14px;
+  line-height: 1.3;
+}
+
+.pressure-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pressure-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 52px;
+}
+
+.gauge-bar-wrap { flex: 1; }
+
+.gauge-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease, background 0.4s;
+  background: var(--green);
+}
+
+.gauge-score {
+  font-size: 13px;
+  color: var(--text);
+  min-width: 32px;
+  text-align: right;
+}
+
+.active-task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ─── Badges ───────────────────────────────────────────── */
+.badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.badge-idle { }
+.badge-active {
+  background: var(--green-bg);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* ─── Session Log ──────────────────────────────────────── */
+.log-empty {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 16px 0;
+  text-align: center;
+}
+
+.log-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.log-item:last-child { border-bottom: none; }
+
+.log-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.log-dot.incomplete { background: var(--muted); }
+
+.log-body { flex: 1; min-width: 0; }
+
+.log-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ─── Buttons (local additions) ─────────────────────────── */
+.btn-full { width: 100%; justify-content: center; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* ─── Done Modal ────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 380px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+}
+
+.modal-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.done-icon { margin-bottom: 12px; }
+
+.done-msg {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ─── Responsive ────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .focus-layout {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+}
+</style>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let recommendation = null;
+let selectedTaskId = null;
+let selectedTaskData = null;
+let activeSessionId = null;
+let timerInterval = null;
+let timerRunning = false;
+let timerPhase = 'focus';  // 'focus' | 'break'
+let timerSecondsLeft = 25 * 60;
+let timerTotalSeconds = 25 * 60;
+let sessionStartTime = null;
+const CIRCUMFERENCE = 553; // 2 * π * 88
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadRecommendation();
+  loadPendingTasks();
+  loadSessionLog();
+  checkActiveSession();
+});
+
+// ═══════════════════════════════════════════════════════
+// AI RECOMMENDATION
+// ═══════════════════════════════════════════════════════
+async function loadRecommendation() {
+  const loading = document.getElementById('rec-loading');
+  const content = document.getElementById('rec-content');
+  const empty   = document.getElementById('rec-empty');
+
+  loading.style.display = 'flex';
+  content.style.display = 'none';
+  empty.style.display   = 'none';
+
+  try {
+    const res = await fetch('/focus/recommend');
+    const data = await res.json();
+
+    if (data.task_id) {
+      recommendation = data;
+      document.getElementById('rec-task-name').textContent = data.title || 'Untitled task';
+      document.getElementById('rec-reasoning').textContent = data.reasoning || '';
+      document.getElementById('rec-duration').innerHTML =
+        `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        ${data.suggested_minutes || 25} min suggested`;
+
+      // Sync focus timer to suggestion
+      const fi = document.getElementById('focus-minutes');
+      if (data.suggested_minutes) {
+        fi.value = Math.min(90, Math.max(1, data.suggested_minutes));
+        updateTimerSettings();
+      }
+
+      loading.style.display = 'none';
+      content.style.display = 'block';
+    } else {
+      loading.style.display = 'none';
+      empty.style.display   = 'flex';
+    }
+  } catch (e) {
+    loading.style.display = 'none';
+    empty.style.display   = 'flex';
+    showToast('Could not load recommendation', 'error');
+  }
+}
+
+function startRecommendedSession() {
+  if (!recommendation) return;
+  selectTask(recommendation.task_id, {
+    title: recommendation.title,
+    pressure_score: null,
+    deadline: null,
+    priority: null,
+  });
+  // Scroll to timer
+  document.getElementById('timer-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ═══════════════════════════════════════════════════════
+// PENDING TASKS LIST
+// ═══════════════════════════════════════════════════════
+async function loadPendingTasks() {
+  const listEl   = document.getElementById('task-selector-list');
+  const emptyEl  = document.getElementById('task-selector-empty');
+  const loadEl   = document.getElementById('task-list-loading');
+
+  loadEl.style.display  = 'flex';
+  listEl.innerHTML      = '';
+  emptyEl.style.display = 'none';
+
+  try {
+    const res  = await fetch('/tasks/list');
+    const data = await res.json();
+    const pending = (data.tasks || []).filter(t => t.status === 'pending');
+
+    loadEl.style.display = 'none';
+
+    if (!pending.length) {
+      emptyEl.style.display = 'flex';
+      return;
+    }
+
+    // Sort by pressure_score desc
+    pending.sort((a,b) => (b.pressure_score || 0) - (a.pressure_score || 0));
+
+    pending.forEach(task => {
+      const score = task.pressure_score || 0;
+      const scoreClass = score >= 70 ? 'high' : score >= 40 ? 'med' : 'low';
+
+      const el = document.createElement('div');
+      el.className = 'task-select-item';
+      el.dataset.taskId = task.id;
+      el.onclick = () => selectTask(task.id, task, el);
+      el.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+        <span class="task-select-title">${escHtml(task.title)}</span>
+        <span class="task-select-score ${scoreClass}">${score}</span>
+      `;
+      listEl.appendChild(el);
+    });
+  } catch (e) {
+    loadEl.style.display = 'none';
+    emptyEl.style.display = 'flex';
+  }
+}
+
+function selectTask(taskId, taskData, el) {
+  // Deselect previous
+  document.querySelectorAll('.task-select-item').forEach(i => i.classList.remove('selected'));
+
+  selectedTaskId   = taskId;
+  selectedTaskData = taskData;
+
+  if (el) el.classList.add('selected');
+
+  // Update timer label
+  const label = document.getElementById('timer-label');
+  label.textContent = taskData.title || 'Selected task';
+
+  // Enable start button
+  const btn = document.getElementById('start-stop-btn');
+  btn.disabled = false;
+
+  // Update active task preview
+  showActiveTask(taskData);
+}
+
+// ═══════════════════════════════════════════════════════
+// ACTIVE TASK CARD
+// ═══════════════════════════════════════════════════════
+function showActiveTask(task) {
+  const card = document.getElementById('active-task-card');
+  card.style.display = 'block';
+
+  document.getElementById('active-task-name').textContent = task.title || '—';
+
+  // Pressure gauge
+  const score = task.pressure_score || 0;
+  const fill  = document.getElementById('active-gauge-fill');
+  const scoreEl = document.getElementById('active-gauge-score');
+
+  fill.style.width = score + '%';
+  fill.style.background = score >= 70 ? 'var(--red)' : score >= 40 ? 'var(--amber)' : 'var(--green)';
+  scoreEl.textContent = score;
+
+  // Deadline
+  const dl = document.getElementById('active-deadline');
+  if (task.deadline) {
+    const d = new Date(task.deadline);
+    dl.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ${fmtDate(d)}`;
+  }
+
+  // Priority
+  const pri = document.getElementById('active-priority');
+  const p   = (task.priority || '').toLowerCase();
+  pri.textContent = task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : '—';
+  pri.style.background = p === 'critical' ? 'var(--red-bg)' : p === 'high' ? 'var(--amber-bg)' : 'var(--bg)';
+  pri.style.borderColor = p === 'critical' ? 'var(--red)' : p === 'high' ? 'var(--amber)' : 'var(--border)';
+  pri.style.color = p === 'critical' ? 'var(--red)' : p === 'high' ? 'var(--amber)' : 'var(--muted)';
+
+  // Session start time
+  sessionStartTime = new Date();
+  document.getElementById('active-session-time').innerHTML =
+    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Started ${fmtTime(sessionStartTime)}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════════════════
+function updateTimerSettings() {
+  if (timerRunning) return;
+  const fm = parseInt(document.getElementById('focus-minutes').value) || 25;
+  const seconds = fm * 60;
+  timerSecondsLeft  = seconds;
+  timerTotalSeconds = seconds;
+  timerPhase = 'focus';
+  renderTimer();
+}
+
+function renderTimer() {
+  const m = Math.floor(timerSecondsLeft / 60);
+  const s = timerSecondsLeft % 60;
+  document.getElementById('timer-time').textContent =
+    String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+
+  const pct = timerSecondsLeft / timerTotalSeconds;
+  const offset = CIRCUMFERENCE * (1 - pct);
+  document.getElementById('ring-fill').style.strokeDashoffset = offset;
+
+  // Color ring by phase
+  const ring = document.getElementById('ring-fill');
+  if (timerPhase === 'break') {
+    ring.style.stroke = 'var(--green)';
+  } else if (pct < 0.25) {
+    ring.style.stroke = 'var(--red)';
+  } else if (pct < 0.5) {
+    ring.style.stroke = 'var(--amber)';
+  } else {
+    ring.style.stroke = 'var(--amber)';
+  }
+
+  document.getElementById('timer-phase').textContent = timerPhase === 'break' ? 'BREAK' : 'FOCUS';
+}
+
+async function toggleTimer() {
+  if (!selectedTaskId) return;
+
+  if (!timerRunning) {
+    // Start
+    if (!activeSessionId) {
+      // Create session on backend
+      try {
+        const res  = await fetch('/focus/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_id: selectedTaskId }),
+        });
+        const data = await res.json();
+        if (data.session_id) {
+          activeSessionId = data.session_id;
+        }
+      } catch (e) {
+        showToast('Failed to start session', 'error');
+        return;
+      }
+    }
+
+    timerRunning = true;
+    timerInterval = setInterval(tickTimer, 1000);
+
+    document.getElementById('play-icon').style.display  = 'none';
+    document.getElementById('pause-icon').style.display = 'block';
+    document.getElementById('start-stop-label').textContent = 'Pause';
+    document.getElementById('reset-btn').disabled = false;
+    document.getElementById('end-btn').disabled   = false;
+
+    // Update status badge
+    document.getElementById('session-status-badge').textContent = 'Session active';
+    document.getElementById('session-status-badge').className = 'badge badge-active';
+
+  } else {
+    // Pause
+    clearInterval(timerInterval);
+    timerRunning = false;
+    document.getElementById('play-icon').style.display  = 'block';
+    document.getElementById('pause-icon').style.display = 'none';
+    document.getElementById('start-stop-label').textContent = 'Resume';
+  }
+}
+
+function tickTimer() {
+  timerSecondsLeft--;
+  renderTimer();
+
+  if (timerSecondsLeft <= 0) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+
+    if (timerPhase === 'focus') {
+      // Focus period done — show done modal, then switch to break
+      showDoneModal();
+    } else {
+      // Break done — reset to focus
+      switchPhase('focus');
+      showToast('Break over — ready to focus again', 'info');
+    }
+  }
+}
+
+function switchPhase(phase) {
+  timerPhase = phase;
+  const bm  = parseInt(document.getElementById('break-minutes').value) || 5;
+  const fm  = parseInt(document.getElementById('focus-minutes').value) || 25;
+  const sec = (phase === 'break' ? bm : fm) * 60;
+  timerSecondsLeft  = sec;
+  timerTotalSeconds = sec;
+  renderTimer();
+  document.getElementById('play-icon').style.display  = 'block';
+  document.getElementById('pause-icon').style.display = 'none';
+  document.getElementById('start-stop-label').textContent = 'Start';
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  timerPhase   = 'focus';
+  const fm = parseInt(document.getElementById('focus-minutes').value) || 25;
+  timerSecondsLeft  = fm * 60;
+  timerTotalSeconds = fm * 60;
+  renderTimer();
+  document.getElementById('play-icon').style.display  = 'block';
+  document.getElementById('pause-icon').style.display = 'none';
+  document.getElementById('start-stop-label').textContent = 'Start';
+}
+
+// ═══════════════════════════════════════════════════════
+// DONE MODAL
+// ═══════════════════════════════════════════════════════
+function showDoneModal() {
+  const name = selectedTaskData?.title || 'this task';
+  document.getElementById('done-msg').textContent =
+    `Focus session complete. Mark "${name}" as done?`;
+  document.getElementById('done-modal').style.display = 'flex';
+  showToast('Focus session complete!', 'success');
+}
+
+async function closeDoneModal(markComplete) {
+  document.getElementById('done-modal').style.display = 'none';
+
+  if (markComplete && selectedTaskId) {
+    try {
+      await fetch('/tasks/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: selectedTaskId, status: 'completed' }),
+      });
+      showToast('Task marked complete', 'success');
+    } catch (e) {
+      showToast('Could not update task', 'error');
+    }
+  }
+
+  // End session on backend
+  await endSessionOnBackend(markComplete);
+
+  // Switch to break
+  switchPhase('break');
+  showToast('Break started — ' + (document.getElementById('break-minutes').value || 5) + ' min', 'info');
+  timerInterval = setInterval(tickTimer, 1000);
+  timerRunning = true;
+  document.getElementById('play-icon').style.display  = 'none';
+  document.getElementById('pause-icon').style.display = 'block';
+  document.getElementById('start-stop-label').textContent = 'Pause';
+}
+
+// ═══════════════════════════════════════════════════════
+// END SESSION
+// ═══════════════════════════════════════════════════════
+async function endSession() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+
+  await endSessionOnBackend(false);
+
+  resetTimerUI();
+  showToast('Session ended', 'success');
+  loadSessionLog();
+}
+
+async function endSessionOnBackend(completed) {
+  if (!activeSessionId) return;
+  try {
+    await fetch('/focus/end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: activeSessionId, completed }),
+    });
+  } catch (e) {
+    // Non-critical
+  }
+  activeSessionId = null;
+}
+
+function resetTimerUI() {
+  selectedTaskId   = null;
+  selectedTaskData = null;
+  activeSessionId  = null;
+
+  document.querySelectorAll('.task-select-item').forEach(i => i.classList.remove('selected'));
+  document.getElementById('active-task-card').style.display = 'none';
+  document.getElementById('session-status-badge').textContent = 'No active session';
+  document.getElementById('session-status-badge').className   = 'badge badge-idle';
+  document.getElementById('start-stop-btn').disabled = true;
+  document.getElementById('reset-btn').disabled      = true;
+  document.getElementById('end-btn').disabled        = true;
+  document.getElementById('timer-label').textContent = 'Select a task to begin';
+  resetTimer();
+  document.getElementById('end-btn').disabled = true;
+  document.getElementById('reset-btn').disabled = true;
+}
+
+// ═══════════════════════════════════════════════════════
+// ACTIVE SESSION CHECK (on page load)
+// ═══════════════════════════════════════════════════════
+async function checkActiveSession() {
+  // If an active session already exists (e.g. user navigated away), surface it
+  // The analytics endpoint gives us what we need
+  try {
+    const res  = await fetch('/analytics/data');
+    const data = await res.json();
+    // No direct active session endpoint — we rely on /focus/recommend for task data
+    // Active session recovery is handled gracefully via /focus/start idempotency
+  } catch (e) {}
+}
+
+// ═══════════════════════════════════════════════════════
+// SESSION LOG
+// ═══════════════════════════════════════════════════════
+async function loadSessionLog() {
+  const listEl  = document.getElementById('session-log-list');
+  const badgeEl = document.getElementById('sessions-count-badge');
+
+  try {
+    // We don't have a dedicated sessions endpoint, use analytics
+    const res  = await fetch('/analytics/data');
+    const data = await res.json();
+
+    const minutes = data.focus_minutes_today || 0;
+    const sessions = data.sessions_today || 0;
+
+    badgeEl.textContent = sessions + (sessions === 1 ? ' session' : ' sessions');
+
+    if (minutes === 0 && sessions === 0) {
+      listEl.innerHTML = '<div class="log-empty">No focus sessions yet today. Start one above.</div>';
+      return;
+    }
+
+    listEl.innerHTML = `
+      <div class="log-item">
+        <div class="log-dot"></div>
+        <div class="log-body">
+          <div class="log-title">Today's focus</div>
+          <div class="log-meta">${minutes} min total · ${sessions} session${sessions !== 1 ? 's' : ''}</div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    listEl.innerHTML = '<div class="log-empty">Could not load session data.</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtTime(d) {
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+function showToast(msg, type='info') {
+  const existing = document.getElementById('toast-container');
+  const container = existing || (() => {
+    const c = document.createElement('div');
+    c.id = 'toast-container';
+    c.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;';
+    document.body.appendChild(c);
+    return c;
+  })();
+
+  const t = document.createElement('div');
+  const colors = { success: 'var(--green)', error: 'var(--red)', info: 'var(--amber)' };
+  t.style.cssText = `
+    background:#111110;color:#F7F7F5;padding:10px 16px;border-radius:6px;
+    font-family:'DM Mono',monospace;font-size:12px;max-width:280px;
+    border-left:3px solid ${colors[type]||colors.info};
+    animation:slideIn 0.18s ease;
+  `;
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// Init render
+renderTimer();
+</script>
+{% endblock %}

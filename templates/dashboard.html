@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeadlineZero — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #F7F7F5;
+      --surface:   #FFFFFF;
+      --border:    #E4E4E0;
+      --text:      #111110;
+      --muted:     #6B6B68;
+      --amber:     #D97706;
+      --amber-bg:  #FEF3C7;
+      --green:     #16A34A;
+      --green-bg:  #DCFCE7;
+      --red:       #DC2626;
+      --red-bg:    #FEE2E2;
+      --mono:      'DM Mono', monospace;
+      --sans:      'Inter', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── LAYOUT ── */
+    .shell {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      grid-template-rows: 100vh;
+      height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 20px;
+      gap: 32px;
+      overflow-y: auto;
+    }
+
+    .wordmark {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--text);
+      text-transform: uppercase;
+    }
+    .wordmark span {
+      color: var(--amber);
+    }
+
+    .user-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .user-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .user-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .user-persona {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+    .nav-item:hover { background: var(--bg); color: var(--text); }
+    .nav-item.active { background: var(--bg); color: var(--text); }
+    .nav-icon {
+      width: 16px;
+      height: 16px;
+      opacity: 0.6;
+      flex-shrink: 0;
+    }
+    .nav-item.active .nav-icon { opacity: 1; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .gmail-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .gmail-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+    .gmail-dot.connected { background: var(--green); }
+
+    /* ── MAIN ── */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .topbar-left {
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .topbar-sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--sans);
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s;
+      text-decoration: none;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--text); color: #fff; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-amber { background: var(--amber); color: #fff; }
+
+    /* ── CONTENT AREA ── */
+    .content {
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* ── STAT STRIP ── */
+    .stat-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1;
+    }
+    .stat-value.amber { color: var(--amber); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.red   { color: var(--red); }
+    .stat-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── SECTION HEADER ── */
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── QUICK ADD ── */
+    .quick-add-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .quick-add-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-family: var(--sans);
+      font-size: 14px;
+      background: transparent;
+      color: var(--text);
+      resize: none;
+      line-height: 1.5;
+    }
+    .quick-add-input::placeholder { color: var(--muted); }
+
+    /* ── VOICE BUTTON ── */
+    .voice-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .voice-btn:hover { border-color: var(--amber); }
+    .voice-btn.recording { background: var(--amber); border-color: var(--amber); }
+    .voice-btn.recording svg path { stroke: #fff; }
+
+    /* ── DAILY PLAN ── */
+    .plan-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .plan-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .plan-body {
+      padding: 18px;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.75;
+      white-space: pre-wrap;
+      font-family: var(--mono);
+    }
+    .plan-empty {
+      padding: 28px 18px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── TASK LIST ── */
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .task-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: start;
+      transition: border-color 0.15s;
+    }
+    .task-card:hover { border-color: #C4C4C0; }
+    .task-card.high-pressure { border-left: 3px solid var(--amber); }
+    .task-card.critical      { border-left: 3px solid var(--red); }
+
+    .task-left { display: flex; flex-direction: column; gap: 6px; }
+    .task-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .task-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .tag-source   { background: var(--bg); color: var(--muted); }
+    .tag-high     { background: var(--amber-bg); color: var(--amber); }
+    .tag-critical { background: var(--red-bg); color: var(--red); }
+    .tag-low      { background: var(--bg); color: var(--muted); }
+    .task-deadline {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── PRESSURE GAUGE ── */
+    .task-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      min-width: 110px;
+    }
+    .pressure-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .pressure-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      justify-content: flex-end;
+    }
+    .pressure-number {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--text);
+      min-width: 32px;
+      text-align: right;
+      line-height: 1;
+    }
+    .pressure-bar-wrap {
+      width: 64px;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .pressure-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 0%;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .task-btn {
+      font-size: 11px;
+      font-family: var(--mono);
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      letter-spacing: 0.04em;
+    }
+    .task-btn:hover { border-color: var(--text); color: var(--text); }
+    .task-btn.done:hover { border-color: var(--green); color: var(--green); }
+    .task-btn.intervene:hover { border-color: var(--amber); color: var(--amber); }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+    }
+    .empty-state strong {
+      display: block;
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    /* ── INTERVENTION MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17,17,16,0.5);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+      max-width: 480px;
+      width: 90%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .modal-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amber);
+    }
+    .modal-body {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .modal-foot {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* ── TOAST ── */
+    .toast-wrap {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--text);
+      color: #fff;
+      font-size: 13px;
+      font-family: var(--mono);
+      padding: 10px 16px;
+      border-radius: 6px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── LOADING SPINNER ── */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .sidebar { flex-direction: row; flex-wrap: wrap; padding: 16px; gap: 16px; border-right: none; border-bottom: 1px solid var(--border); }
+      .sidebar-footer { margin-top: 0; }
+      nav { flex-direction: row; }
+      .stat-strip { grid-template-columns: repeat(2, 1fr); }
+      .content { padding: 20px 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .pressure-bar-fill { transition: none; }
+      .toast { transition: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="wordmark">Deadline<span>Zero</span></div>
+
+    <div class="user-block">
+      <span class="user-label">Operator</span>
+      <span class="user-name" id="userName">Loading…</span>
+      <span class="user-persona" id="userPersona">—</span>
+    </div>
+
+    <nav>
+      <a href="/dashboard" class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
+          <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
+        </svg>
+        Dashboard
+      </a>
+      <a href="/tasks" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4h12M2 8h8M2 12h10"/>
+        </svg>
+        Tasks
+      </a>
+      <a href="/focus" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/>
+        </svg>
+        Focus
+      </a>
+      <a href="/chat" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 2h12v9H9l-3 3v-3H2V2z"/>
+        </svg>
+        Chat
+      </a>
+      <a href="/analytics" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 12l3-4 3 2 3-5 3 3"/>
+        </svg>
+        Analytics
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="gmail-status">
+        <div class="gmail-dot" id="gmailDot"></div>
+        <span id="gmailLabel">Gmail not connected</span>
+      </div>
+      <a href="/gmail/connect" class="btn btn-ghost" style="font-size:12px; justify-content:center;" id="gmailConnectBtn">Connect Gmail</a>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-title">Command Center</span>
+        <span class="topbar-sub" id="topbarDate">—</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="scanGmail()" id="scanBtn">Scan Gmail</button>
+        <button class="btn btn-primary" onclick="openQuickAdd()">+ Add Task</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- STAT STRIP -->
+      <div class="stat-strip">
+        <div class="stat-card">
+          <span class="stat-label">Pending</span>
+          <span class="stat-value" id="statPending">—</span>
+          <span class="stat-sub">tasks active</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">At Risk</span>
+          <span class="stat-value amber" id="statAtRisk">—</span>
+          <span class="stat-sub">need attention</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Completed</span>
+          <span class="stat-value green" id="statCompleted">—</span>
+          <span class="stat-sub">this week</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Focus Time</span>
+          <span class="stat-value" id="statFocus">—</span>
+          <span class="stat-sub">minutes today</span>
+        </div>
+      </div>
+
+      <!-- QUICK ADD -->
+      <div>
+        <div class="section-head">
+          <span class="section-title">Quick Add</span>
+        </div>
+        <div class="quick-add-wrap">
+          <textarea class="quick-add-input" id="quickAddInput" rows="2"
+            placeholder="Type anything — 'Submit the report by Friday, high priority' — AI will extract the task"></textarea>
+          <button class="voice-btn" id="voiceBtn" title="Record voice" onclick="toggleVoice()">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5v4a2.5 2.5 0 0 1-5 0v-4A2.5 2.5 0 0 1 8 1z" stroke="#6B6B68" stroke-width="1.4"/>
+              <path d="M3 7.5A5 5 0 0 0 13 7.5M8 13v2" stroke="#6B6B68" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="btn btn-primary" onclick="submitQuickAdd()" id="addBtn">Add</button>
+        </div>
+      </div>
+
+      <!-- DAILY PLAN -->
+      <div>
+        <div class="section-head">
+          <span class="section-title">Today's Plan</span>
+          <button class="btn btn-ghost" onclick="refreshPlan()" id="planRefreshBtn" style="font-size:12px; padding: 5px 10px;">
+            Regenerate
+          </button>
+        </div>
+        <div class="plan-card">
+          <div class="plan-body" id="planBody">
+            <div class="plan-empty">No plan yet. Add some tasks and generate your daily plan.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TASK LIST -->
+      <div>
+        <div class="section-head">
+          <span class="section-title">Active Tasks — by Pressure</span>
+          <a href="/tasks" class="btn btn-ghost" style="font-size:12px; padding:5px 10px;">View all</a>
+        </div>
+        <div class="task-list" id="taskList">
+          <div class="empty-state">
+            <strong>No tasks yet</strong>
+            Use the quick-add above or connect Gmail to pull tasks automatically.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- INTERVENTION MODAL -->
+<div class="modal-overlay" id="interventionModal">
+  <div class="modal">
+    <span class="modal-title">⚠ Intervention</span>
+    <div class="modal-body" id="interventionText">Loading…</div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Dismiss</button>
+      <a href="/focus" class="btn btn-amber">Start Focus</a>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+  // ── STATE ──
+  let tasks = [];
+  let isRecording = false;
+  let mediaRecorder = null;
+  let audioChunks = [];
+
+  // ── INIT ──
+  document.addEventListener('DOMContentLoaded', () => {
+    setDate();
+    loadDashboard();
+  });
+
+  function setDate() {
+    const d = new Date();
+    const opts = { weekday: 'long', month: 'long', day: 'numeric' };
+    document.getElementById('topbarDate').textContent = d.toLocaleDateString('en-US', opts);
+  }
+
+  async function loadDashboard() {
+    try {
+      // Load analytics for stats
+      const [analyticsRes, tasksRes] = await Promise.all([
+        fetch('/analytics/data'),
+        fetch('/tasks/list')  // we'll handle if this 404s
+      ]);
+
+      if (analyticsRes.ok) {
+        const data = await analyticsRes.json();
+        renderStats(data);
+        if (data.user) renderUser(data.user);
+        if (data.gmail_connected) setGmailConnected(true);
+      }
+
+      if (tasksRes.ok) {
+        const data = await tasksRes.json();
+        tasks = data.tasks || [];
+        renderTasks(tasks);
+        renderPlan(data.daily_plan || '');
+      }
+    } catch (e) {
+      console.error('Dashboard load error:', e);
+    }
+  }
+
+  function renderUser(user) {
+    document.getElementById('userName').textContent = user.name || '—';
+    document.getElementById('userPersona').textContent = user.persona || '—';
+  }
+
+  function renderStats(data) {
+    document.getElementById('statPending').textContent   = data.pending_count   ?? '0';
+    document.getElementById('statAtRisk').textContent    = data.at_risk_count   ?? '0';
+    document.getElementById('statCompleted').textContent = data.completed_count  ?? '0';
+    document.getElementById('statFocus').textContent     = data.focus_minutes_today ?? '0';
+  }
+
+  function setGmailConnected(connected) {
+    const dot   = document.getElementById('gmailDot');
+    const label = document.getElementById('gmailLabel');
+    const btn   = document.getElementById('gmailConnectBtn');
+    if (connected) {
+      dot.classList.add('connected');
+      label.textContent = 'Gmail connected';
+      btn.style.display = 'none';
+    }
+  }
+
+  // ── PLAN ──
+  function renderPlan(text) {
+    const el = document.getElementById('planBody');
+    if (!text) {
+      el.innerHTML = '<div class="plan-empty">No plan yet. Add some tasks and generate your daily plan.</div>';
+      return;
+    }
+    el.textContent = text;
+  }
+
+  async function refreshPlan() {
+    const btn = document.getElementById('planRefreshBtn');
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/dashboard/refresh-plan', { method: 'POST' });
+      const data = await res.json();
+      renderPlan(data.plan || '');
+      toast('Plan updated');
+    } catch {
+      toast('Could not refresh plan');
+    } finally {
+      btn.textContent = 'Regenerate';
+      btn.disabled = false;
+    }
+  }
+
+  // ── TASKS ──
+  function renderTasks(list) {
+    const container = document.getElementById('taskList');
+    if (!list || list.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <strong>No tasks yet</strong>
+          Use the quick-add above or connect Gmail to pull tasks automatically.
+        </div>`;
+      return;
+    }
+
+    // Sort by pressure_score descending
+    const sorted = [...list].sort((a, b) => (b.pressure_score || 0) - (a.pressure_score || 0));
+    const top = sorted.slice(0, 8);
+
+    container.innerHTML = top.map(task => {
+      const score = task.pressure_score || 0;
+      const pct   = Math.min(score, 100);
+      const cardClass = score >= 80 ? 'critical' : score >= 50 ? 'high-pressure' : '';
+      const tagClass  = score >= 80 ? 'tag-critical' : score >= 50 ? 'tag-high' : 'tag-low';
+      const tagText   = score >= 80 ? 'Critical' : score >= 50 ? 'High' : 'Low';
+      const fillColor = score >= 80 ? 'var(--red)' : score >= 50 ? 'var(--amber)' : 'var(--green)';
+
+      const deadline = task.deadline
+        ? new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : 'No deadline';
+
+      return `
+        <div class="task-card ${cardClass}" data-id="${task.id}">
+          <div class="task-left">
+            <span class="task-title">${escHtml(task.title)}</span>
+            <div class="task-meta">
+              <span class="tag tag-source">${escHtml(task.source || 'manual')}</span>
+              <span class="tag ${tagClass}">${tagText}</span>
+              <span class="task-deadline">Due ${deadline}</span>
+            </div>
+            <div class="task-actions">
+              <button class="task-btn done" onclick="markDone(${task.id})">Mark done</button>
+              <button class="task-btn intervene" onclick="getIntervention(${task.id})">Intervene</button>
+            </div>
+          </div>
+          <div class="task-right">
+            <span class="pressure-label">Pressure</span>
+            <div class="pressure-row">
+              <div class="pressure-bar-wrap">
+                <div class="pressure-bar-fill" data-pct="${pct}" style="background:${fillColor}"></div>
+              </div>
+              <span class="pressure-number">${score}</span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Animate bars after paint
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.pressure-bar-fill').forEach(bar => {
+        bar.style.width = bar.dataset.pct + '%';
+      });
+    });
+  }
+
+  // ── QUICK ADD ──
+  function openQuickAdd() {
+    document.getElementById('quickAddInput').focus();
+  }
+
+  async function submitQuickAdd() {
+    const input = document.getElementById('quickAddInput');
+    const text  = input.value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('addBtn');
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled  = true;
+
+    try {
+      const res = await fetch('/tasks/quick-add', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ text })
+      });
+      const data = await res.json();
+      if (data.tasks_created) {
+        toast(`${data.tasks_created} task${data.tasks_created > 1 ? 's' : ''} added`);
+        input.value = '';
+        await loadDashboard();
+      } else {
+        toast('No tasks found in that text');
+      }
+    } catch {
+      toast('Failed to add task');
+    } finally {
+      btn.textContent = 'Add';
+      btn.disabled    = false;
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.ctrlKey && document.activeElement.id === 'quickAddInput') {
+      submitQuickAdd();
+    }
+  });
+
+  // ── VOICE ──
+  async function toggleVoice() {
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks   = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = processVoice;
+        mediaRecorder.start();
+        isRecording = true;
+        document.getElementById('voiceBtn').classList.add('recording');
+        toast('Recording… click again to stop');
+      } catch {
+        toast('Microphone access denied');
+      }
+    } else {
+      mediaRecorder.stop();
+      isRecording = false;
+      document.getElementById('voiceBtn').classList.remove('recording');
+    }
+  }
+
+  async function processVoice() {
+    // In a real impl, send audio blob to a speech-to-text service,
+    // then POST the transcript to /voice/process.
+    // For now, show the user the input for manual transcript entry.
+    toast('Voice recorded — paste transcript or use Web Speech API');
+  }
+
+  // ── MARK DONE ──
+  async function markDone(taskId) {
+    try {
+      const res = await fetch('/tasks/update-status', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ task_id: taskId, status: 'completed' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast('Task marked complete');
+        await loadDashboard();
+      }
+    } catch {
+      toast('Failed to update task');
+    }
+  }
+
+  // ── INTERVENTION ──
+  async function getIntervention(taskId) {
+    document.getElementById('interventionModal').classList.add('open');
+    document.getElementById('interventionText').textContent = 'AI is thinking…';
+    try {
+      const res = await fetch('/tasks/intervention', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ task_id: taskId })
+      });
+      const data = await res.json();
+      document.getElementById('interventionText').textContent = data.message || 'No intervention available.';
+    } catch {
+      document.getElementById('interventionText').textContent = 'Could not load intervention.';
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('interventionModal').classList.remove('open');
+  }
+
+  // ── GMAIL SCAN ──
+  async function scanGmail() {
+    const btn = document.getElementById('scanBtn');
+    btn.innerHTML = '<span class="spinner"></span> Scanning';
+    btn.disabled  = true;
+    try {
+      const res  = await fetch('/gmail/scan', { method: 'POST' });
+      const data = await res.json();
+      if (data.tasks_created !== undefined) {
+        toast(`Gmail scan: ${data.tasks_created} task${data.tasks_created !== 1 ? 's' : ''} found`);
+        await loadDashboard();
+      } else if (data.error) {
+        toast(data.error);
+      }
+    } catch {
+      toast('Gmail scan failed');
+    } finally {
+      btn.textContent = 'Scan Gmail';
+      btn.disabled    = false;
+    }
+  }
+
+  // ── TOAST ──
+  function toast(msg, duration = 3000) {
+    const wrap = document.getElementById('toastWrap');
+    const el   = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    wrap.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 200);
+    }, duration);
+  }
+
+  // ── UTILS ──
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+</script>
+</body>
+</html>

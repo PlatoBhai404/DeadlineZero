@@ -1,0 +1,823 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics — DeadlineZero{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <span class="topbar-title">Analytics</span>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost btn-sm" onclick="loadAnalytics()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+      Refresh
+    </button>
+  </div>
+</div>
+
+<!-- Stats Strip -->
+<div class="stats-strip">
+  <div class="stat-cell">
+    <span class="stat-number" id="stat-completed">—</span>
+    <span class="stat-label">Completed</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-number" id="stat-pending">—</span>
+    <span class="stat-label">Pending</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-number" id="stat-at-risk" style="color:var(--red);">—</span>
+    <span class="stat-label">At risk</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-number" id="stat-focus" style="color:var(--amber);">—</span>
+    <span class="stat-label">Focus min today</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-number" id="stat-rate">—</span>
+    <span class="stat-label">Completion rate</span>
+  </div>
+</div>
+
+<!-- Main grid -->
+<div class="analytics-grid">
+
+  <!-- Completion Rate Gauge (hero) -->
+  <div class="card card-hero">
+    <div class="card-header">
+      <span class="card-label">OVERALL COMPLETION RATE</span>
+    </div>
+    <div class="hero-gauge-wrap">
+      <svg class="hero-gauge" viewBox="0 0 220 130" xmlns="http://www.w3.org/2000/svg">
+        <!-- Arc track (half-circle) -->
+        <path class="arc-bg" d="M 20 115 A 90 90 0 0 1 200 115" />
+        <path class="arc-fill" id="arc-fill" d="M 20 115 A 90 90 0 0 1 200 115"
+              stroke-dasharray="283"
+              stroke-dashoffset="283"/>
+        <!-- Needle -->
+        <line class="needle" id="arc-needle"
+              x1="110" y1="115" x2="110" y2="38"
+              transform-origin="110 115"/>
+        <circle cx="110" cy="115" r="5" fill="var(--text)"/>
+      </svg>
+      <div class="hero-number">
+        <span id="hero-rate-num" style="font-family:'DM Mono',monospace;font-size:48px;font-weight:700;color:var(--text);">—</span>
+        <span style="font-family:'DM Mono',monospace;font-size:20px;color:var(--muted);">%</span>
+      </div>
+      <div class="arc-labels">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">0</span>
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">100</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Task Breakdown Bar Chart -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">TASK STATUS BREAKDOWN</span>
+    </div>
+    <div id="breakdown-chart" class="breakdown-chart">
+      <!-- Populated by JS -->
+      <div class="chart-loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Source Breakdown -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">TASK SOURCES</span>
+    </div>
+    <div id="source-chart" class="source-chart">
+      <div class="chart-loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Priority Breakdown -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">PRIORITY MIX</span>
+    </div>
+    <div id="priority-chart" class="priority-chart">
+      <div class="chart-loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Focus Time -->
+  <div class="card card-wide">
+    <div class="card-header">
+      <span class="card-label">FOCUS TIME</span>
+      <span class="badge" id="focus-sessions-badge">— sessions</span>
+    </div>
+    <div class="focus-stats-row">
+      <div class="focus-stat">
+        <span class="focus-stat-num" id="focus-today">—</span>
+        <span class="focus-stat-label">min today</span>
+      </div>
+      <div class="focus-stat-divider"></div>
+      <div class="focus-stat">
+        <span class="focus-stat-num" id="focus-total">—</span>
+        <span class="focus-stat-label">min total</span>
+      </div>
+      <div class="focus-stat-divider"></div>
+      <div class="focus-stat">
+        <span class="focus-stat-num" id="focus-sessions">—</span>
+        <span class="focus-stat-label">sessions total</span>
+      </div>
+    </div>
+    <!-- Mini bar -->
+    <div class="focus-bar-wrap">
+      <div class="focus-bar-label">Today vs. average</div>
+      <div class="focus-bar-track">
+        <div class="focus-bar-fill" id="focus-bar-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly Summary -->
+  <div class="card card-wide">
+    <div class="card-header">
+      <span class="card-label">AI WEEKLY REVIEW</span>
+      <button class="btn btn-ghost btn-sm" id="summary-btn" onclick="loadWeeklySummary()">Generate</button>
+    </div>
+    <div id="summary-loading" style="display:none;" class="chart-loading">
+      <div class="spinner"></div>
+      <span>Composing honest review…</span>
+    </div>
+    <div id="summary-content" class="summary-content" style="display:none;">
+      <!-- Populated by JS -->
+    </div>
+    <div id="summary-empty" class="chart-empty">
+      Click Generate for an AI-written review of your week — what went well, what didn't, and what to do next.
+    </div>
+  </div>
+
+  <!-- Gmail Scan Stats -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">GMAIL INTEGRATION</span>
+      <span class="badge" id="gmail-status-badge">Not connected</span>
+    </div>
+    <div id="gmail-stats" class="gmail-stats">
+      <div class="gmail-row">
+        <span class="gmail-key">Emails scanned</span>
+        <span class="gmail-val" id="gmail-scanned" style="font-family:'DM Mono',monospace;">—</span>
+      </div>
+      <div class="gmail-row">
+        <span class="gmail-key">Tasks extracted</span>
+        <span class="gmail-val" id="gmail-extracted" style="font-family:'DM Mono',monospace;">—</span>
+      </div>
+      <div class="gmail-row">
+        <span class="gmail-key">Last scan</span>
+        <span class="gmail-val" id="gmail-last-scan" style="font-family:'DM Mono',monospace;">—</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+/* ─── Stats Strip ────────────────────────────────────── */
+.stats-strip {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.stat-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 12px;
+  border-right: 1px solid var(--border);
+  gap: 4px;
+}
+
+.stat-cell:last-child { border-right: none; }
+
+.stat-number {
+  font-family: 'DM Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ─── Grid ───────────────────────────────────────────── */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 24px;
+}
+
+.card-hero { grid-column: span 1; }
+.card-wide { grid-column: span 2; }
+
+/* ─── Cards ──────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.card-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+/* ─── Hero Gauge (half-circle) ───────────────────────── */
+.hero-gauge-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero-gauge {
+  width: 100%;
+  max-width: 260px;
+}
+
+.arc-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.arc-fill {
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1), stroke 0.4s;
+}
+
+.needle {
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: transform 1.2s cubic-bezier(.4,0,.2,1);
+  transform: rotate(-90deg);
+}
+
+.hero-number {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: -10px;
+}
+
+.arc-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 220px;
+  margin-top: 4px;
+}
+
+/* ─── Bar Charts (breakdown, source, priority) ───────── */
+.breakdown-chart,
+.source-chart,
+.priority-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chart-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 16px 0;
+}
+
+.chart-empty {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  padding: 8px 0;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar-label {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 72px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s cubic-bezier(.4,0,.2,1);
+}
+
+.bar-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  min-width: 28px;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+/* ─── Focus Stats ─────────────────────────────────────── */
+.focus-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 20px;
+}
+
+.focus-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.focus-stat-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--amber);
+  line-height: 1;
+}
+
+.focus-stat-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.focus-stat-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.focus-bar-wrap { }
+.focus-bar-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.focus-bar-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.focus-bar-fill {
+  height: 100%;
+  background: var(--amber);
+  border-radius: 3px;
+  transition: width 0.8s cubic-bezier(.4,0,.2,1);
+}
+
+/* ─── Weekly Summary ──────────────────────────────────── */
+.summary-content {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+/* ─── Gmail Stats ─────────────────────────────────────── */
+.gmail-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gmail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.gmail-row:last-child { border-bottom: none; }
+
+.gmail-key {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.gmail-val {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* ─── Badge ───────────────────────────────────────────── */
+.badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.badge-connected {
+  background: var(--green-bg);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* ─── Responsive ──────────────────────────────────────── */
+@media (max-width: 860px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  .card-wide { grid-column: span 1; }
+  .stats-strip { flex-wrap: wrap; }
+  .stat-cell { min-width: 50%; border-right: none; border-bottom: 1px solid var(--border); }
+}
+</style>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+let analyticsData = null;
+
+document.addEventListener('DOMContentLoaded', loadAnalytics);
+
+// ═══════════════════════════════════════════════════════
+// LOAD ALL DATA
+// ═══════════════════════════════════════════════════════
+async function loadAnalytics() {
+  try {
+    const [analyticsRes, tasksRes] = await Promise.all([
+      fetch('/analytics/data'),
+      fetch('/tasks/list'),
+    ]);
+
+    const analytics = await analyticsRes.json();
+    const tasksData = await tasksRes.json();
+    const tasks     = tasksData.tasks || [];
+
+    analyticsData = analytics;
+
+    renderStatsStrip(analytics);
+    renderHeroGauge(analytics);
+    renderBreakdownChart(analytics, tasks);
+    renderSourceChart(tasks);
+    renderPriorityChart(tasks);
+    renderFocusStats(analytics);
+    renderGmailStats(analytics);
+
+  } catch (e) {
+    showToast('Failed to load analytics', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// STATS STRIP
+// ═══════════════════════════════════════════════════════
+function renderStatsStrip(data) {
+  const completed = data.completed_count || 0;
+  const pending   = data.pending_count   || 0;
+  const atRisk    = data.at_risk_count   || 0;
+  const focus     = data.focus_minutes_today || 0;
+  const total     = completed + pending;
+  const rate      = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  setText('stat-completed', completed);
+  setText('stat-pending',   pending);
+  setText('stat-at-risk',   atRisk);
+  setText('stat-focus',     focus);
+  setText('stat-rate',      rate + '%');
+}
+
+// ═══════════════════════════════════════════════════════
+// HERO GAUGE (half-circle needle gauge)
+// ═══════════════════════════════════════════════════════
+function renderHeroGauge(data) {
+  const completed = data.completed_count || 0;
+  const total     = (data.completed_count || 0) + (data.pending_count || 0);
+  const rate      = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  setText('hero-rate-num', rate);
+
+  // Arc: full arc length ≈ 283 (half-circle of r=90)
+  const ARC_LEN = 283;
+  const offset  = ARC_LEN - (rate / 100) * ARC_LEN;
+  const arcFill = document.getElementById('arc-fill');
+
+  // Color
+  const color = rate >= 70 ? 'var(--green)' : rate >= 40 ? 'var(--amber)' : 'var(--red)';
+  arcFill.style.stroke = color;
+
+  setTimeout(() => {
+    arcFill.style.strokeDashoffset = offset;
+
+    // Needle: rotates from -90deg (0%) to +90deg (100%)
+    const needle = document.getElementById('arc-needle');
+    const angle  = -90 + (rate / 100) * 180;
+    needle.style.transform = `rotate(${angle}deg)`;
+    needle.style.stroke = color;
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════════════
+// BREAKDOWN CHART (status bars)
+// ═══════════════════════════════════════════════════════
+function renderBreakdownChart(data, tasks) {
+  const el = document.getElementById('breakdown-chart');
+
+  const completed = data.completed_count || 0;
+  const pending   = data.pending_count   || 0;
+  const atRisk    = data.at_risk_count   || 0;
+  const total     = completed + pending;
+
+  if (total === 0) {
+    el.innerHTML = '<div class="chart-empty">No tasks yet. Add some tasks to see breakdown.</div>';
+    return;
+  }
+
+  const rows = [
+    { label: 'Completed', value: completed, total, color: 'var(--green)' },
+    { label: 'Pending',   value: pending - atRisk, total, color: 'var(--amber)' },
+    { label: 'At risk',   value: atRisk,   total, color: 'var(--red)' },
+  ];
+
+  el.innerHTML = rows.map(r => barRow(r.label, r.value, r.total, r.color)).join('');
+
+  // Animate after render
+  setTimeout(() => {
+    el.querySelectorAll('.bar-fill').forEach(fill => {
+      fill.style.width = fill.dataset.target;
+    });
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════════════
+// SOURCE CHART
+// ═══════════════════════════════════════════════════════
+function renderSourceChart(tasks) {
+  const el = document.getElementById('source-chart');
+
+  const counts = {};
+  tasks.forEach(t => {
+    const src = t.source || 'manual';
+    counts[src] = (counts[src] || 0) + 1;
+  });
+
+  const total = tasks.length;
+  if (total === 0) {
+    el.innerHTML = '<div class="chart-empty">No tasks yet.</div>';
+    return;
+  }
+
+  const sourceColors = {
+    manual:  'var(--text)',
+    voice:   'var(--amber)',
+    gmail:   'var(--green)',
+    email:   'var(--green)',
+    accountability: 'var(--red)',
+  };
+
+  const rows = Object.entries(counts).map(([src, count]) => ({
+    label: src.charAt(0).toUpperCase() + src.slice(1),
+    value: count,
+    total,
+    color: sourceColors[src] || 'var(--muted)',
+  }));
+
+  rows.sort((a, b) => b.value - a.value);
+
+  el.innerHTML = rows.map(r => barRow(r.label, r.value, r.total, r.color)).join('');
+
+  setTimeout(() => {
+    el.querySelectorAll('.bar-fill').forEach(fill => {
+      fill.style.width = fill.dataset.target;
+    });
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════════════
+// PRIORITY CHART
+// ═══════════════════════════════════════════════════════
+function renderPriorityChart(tasks) {
+  const el = document.getElementById('priority-chart');
+
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  tasks.forEach(t => {
+    const p = (t.priority || 'medium').toLowerCase();
+    if (counts[p] !== undefined) counts[p]++;
+    else counts['medium']++;
+  });
+
+  const total = tasks.length;
+  if (total === 0) {
+    el.innerHTML = '<div class="chart-empty">No tasks yet.</div>';
+    return;
+  }
+
+  const colors = {
+    critical: 'var(--red)',
+    high:     'var(--amber)',
+    medium:   'var(--text)',
+    low:      'var(--muted)',
+  };
+
+  el.innerHTML = Object.entries(counts)
+    .filter(([,v]) => v > 0)
+    .map(([p, v]) => barRow(
+      p.charAt(0).toUpperCase() + p.slice(1),
+      v, total, colors[p]
+    )).join('');
+
+  setTimeout(() => {
+    el.querySelectorAll('.bar-fill').forEach(fill => {
+      fill.style.width = fill.dataset.target;
+    });
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════════════
+// FOCUS STATS
+// ═══════════════════════════════════════════════════════
+function renderFocusStats(data) {
+  const today    = data.focus_minutes_today  || 0;
+  const total    = data.total_focus_minutes  || 0;
+  const sessions = data.total_focus_sessions || 0;
+
+  setText('focus-today',    today);
+  setText('focus-total',    total);
+  setText('focus-sessions', sessions);
+  setText('focus-sessions-badge', sessions + (sessions === 1 ? ' session' : ' sessions'));
+
+  // Mini bar: today vs. a 120-min target
+  const TARGET = 120;
+  const pct    = Math.min(100, Math.round((today / TARGET) * 100));
+  setTimeout(() => {
+    document.getElementById('focus-bar-fill').style.width = pct + '%';
+  }, 150);
+}
+
+// ═══════════════════════════════════════════════════════
+// GMAIL STATS
+// ═══════════════════════════════════════════════════════
+function renderGmailStats(data) {
+  const connected = data.gmail_connected;
+  const badge     = document.getElementById('gmail-status-badge');
+
+  if (connected) {
+    badge.textContent = 'Connected';
+    badge.className   = 'badge badge-connected';
+  } else {
+    badge.textContent = 'Not connected';
+    badge.className   = 'badge';
+  }
+
+  setText('gmail-scanned',   data.emails_processed || '—');
+  setText('gmail-extracted', data.gmail_tasks_created || '—');
+
+  const lastScan = data.last_scan_at;
+  const lastEl   = document.getElementById('gmail-last-scan');
+  if (lastScan) {
+    const d = new Date(lastScan);
+    lastEl.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+      ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  } else {
+    lastEl.textContent = 'Never';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// WEEKLY SUMMARY
+// ═══════════════════════════════════════════════════════
+async function loadWeeklySummary() {
+  const btn     = document.getElementById('summary-btn');
+  const loading = document.getElementById('summary-loading');
+  const content = document.getElementById('summary-content');
+  const empty   = document.getElementById('summary-empty');
+
+  btn.disabled          = true;
+  btn.textContent       = '…';
+  loading.style.display = 'flex';
+  content.style.display = 'none';
+  empty.style.display   = 'none';
+
+  try {
+    // Reuse dashboard refresh-plan endpoint as a proxy for weekly summary
+    // The correct endpoint is /dashboard/refresh-plan which calls generate_daily_plan
+    // We'll call analytics/data + tasks/list and compose a prompt ourselves,
+    // or use the dedicated endpoint if available.
+    // Per the backend reference, generate_weekly_summary is called from analytics.
+    // We send a POST to /dashboard/refresh-plan for now since there's no direct endpoint.
+    // If the team adds /analytics/summary, swap this URL.
+    const res  = await fetch('/dashboard/refresh-plan', { method: 'POST' });
+    const data = await res.json();
+
+    const text = data.plan || data.summary || data.message || 'No summary available.';
+
+    loading.style.display = 'none';
+    content.style.display = 'block';
+    content.textContent   = text;
+  } catch (e) {
+    loading.style.display = 'none';
+    empty.style.display   = 'block';
+    empty.textContent     = 'Could not generate summary. Try again later.';
+    showToast('Summary failed', 'error');
+  }
+
+  btn.disabled    = false;
+  btn.textContent = 'Regenerate';
+}
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+function barRow(label, value, total, color) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return `
+    <div class="bar-row">
+      <span class="bar-label">${escHtml(label)}</span>
+      <div class="bar-track">
+        <div class="bar-fill" data-target="${pct}%" style="width:0%;background:${color};"></div>
+      </div>
+      <span class="bar-value">${value}</span>
+    </div>
+  `;
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg, type='info') {
+  const existing  = document.getElementById('toast-container');
+  const container = existing || (() => {
+    const c = document.createElement('div');
+    c.id = 'toast-container';
+    c.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;';
+    document.body.appendChild(c);
+    return c;
+  })();
+
+  const t = document.createElement('div');
+  const colors = { success: 'var(--green)', error: 'var(--red)', info: 'var(--amber)' };
+  t.style.cssText = `
+    background:#111110;color:#F7F7F5;padding:10px 16px;border-radius:6px;
+    font-family:'DM Mono',monospace;font-size:12px;max-width:280px;
+    border-left:3px solid ${colors[type]||colors.info};
+  `;
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+</script>
+{% endblock %}
